@@ -571,9 +571,10 @@ class App:
             print("再常见不过的ValueError")
         self.draw()
 
-    # 处理鼠标点击work_part选取坐标的情况
+    # 处理鼠标点击work_part选取坐标，以及标记选区（选位）
     def click_to_choose_xy(self, event):
         global kind_selection
+        self.draw()
         # 以下代码来自https://blog.csdn.net/qq_41556318/article/details/85272026
         canvas = event.widget
         x = canvas.canvasx(event.x)
@@ -582,6 +583,8 @@ class App:
         if kind_selection == 0:
             self.k0_x_getVar.set(str(int(x/50*32)))
             self.k0_y_getVar.set(str(int(y/50*32)))
+            self.map_part.create_oval(x-2, y-2, x+2, y+2, width=0, fill="red")
+            return None  # 剩下的四种kind都绘制方块位置，故绘制放在大判断后。又为了不让此case也绘制方块，故强制停止
         elif kind_selection == 1:
             self.k1_x_var.set(str(
                 int(x/1500*30)
@@ -611,6 +614,7 @@ class App:
             self.k4_y_var.set(str(
                 int(y / 1000 * 20)
             ))
+        self.map_part.create_rectangle(x//50*50, y//50*50, x//50*50+50, y//50*50+50, fill="red")
 
     # 处理鼠标移动的情况，并实时显示鼠标坐标
     def motion(self, event):
