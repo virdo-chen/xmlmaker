@@ -1,0 +1,51 @@
+
+
+
+
+
+地图的长宽是30*20
+有关tmx文件的所知：
+    一、<grid>中定义了图像。这个定义似乎不是固定的，而是可以变化的。
+    二、<layer>里长长的csv表格似乎记录了图片数据。
+    三、<layer>区分了功能
+    四、csv表格中的数字仅记录了图片信息，不记录功能
+
+打算将<grid>列表固定化。不妨碍什么。
+
+<learn>   main.py的App().resize_work函数的参数event不可删去。
+            tkinter采用绑定事件法来处理事件，这和pygame(游戏循环)有本质上的差别。
+            tkinter的事件处理类似于scratch，使用“事件”来处理时间。
+            譬如：
+            tk.frame().bind(str, func)
+            str是事件名称，是tkinter提前全部编好的，用户直接使用。
+            func是一个函数，必须是一个参数，这个参数返回事件的一些细节。
+            def func(event):...
+            由于细节的数量不固定。故event是一个对象，细节都写在event的不同属性中。
+
+          self.killers_data = eval("[" + self.tree.find("layer", namespaces={"name": "障碍物"}).findtext("data") + "]")
+          self.player_data = eval("[" + self.tree.find("layer", namespaces={"name": "玩家"}).findtext("data") + "]")
+          self.bricks_data = eval("[" + self.tree.find("layer", namespaces={"name": "砖块"}).findtext("data") + "]")
+          self.walls_data = eval("[" + self.tree.find("layer", namespaces={"name": "墙"}).findtext("data") + "]")
+          这四行代码被废止。原因：ET使用find()/findall()函数来获得对象时，对于其参数namespaces，这两个怨种函数只考虑namespaces这个字典的
+          键(key)在不在，值它根本不管。。。
+          所以必须使用
+          for i in 某某某.findall(什么什么):
+              if i.get("某键") == "某值":
+                  某某某操作()
+          的这种方式。
+
+
+!称a.xml文件中的<tileset>标签为头文件，其余为主体
+此xml文件中有一个问题：头文件中的id号是从0开始的。但是主体中0用来表示“无方块”，故主体中的编号比头文件中的往后推了一位，即从1开始。
+这个问题，工程中把程序内部的编号也统一后推吧
+
+
+即为特殊的一点：移动的砖块坐标系的坐标原点在左下角而非左上角
+!窗口大小为960*640px^2
+
+
+
+！真tnnd离谱
+最后的可移动砖块错位的问题竟然是因为：平移量和位置坐标的单位不一样！一单位平移量大小是一单位坐标的1/2！？
+为此，在写入文件时把坐标数乘二
+导入时也要 除以2
