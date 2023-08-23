@@ -106,10 +106,10 @@ class Main_data_processor:
             else:
                 c[0] = 0
                 for property_ in properties:
-                    if property_.get("name") == "boundary_bottom":
-                        c[1] = int(property_.get("value"))
+                    if property_.get("name") == "boundary_bottom":  # 为统一度量衡
+                        c[1] = 640 - int(property_.get("value"))
                     elif property_.get("name") == "boundary_top":
-                        c[2] = int(property_.get("value"))
+                        c[2] = 640 - int(property_.get("value"))
                     else:
                         c[3] = int(property_.get("value"))
 
@@ -134,10 +134,9 @@ class Main_data_processor:
                 properties.append(ET.Element("property", {"name": "boundary_right", "type": "int", "value": str(a[2])}))
                 properties.append(ET.Element("property", {"name": "change_x", "type": "int", "value": str(a[3])}))
             else:
-                # ud
-                properties.append(
-                    ET.Element("property", {"name": "boundary_bottom", "type": "int", "value": str(a[1])}))
-                properties.append(ET.Element("property", {"name": "boundary_top", "type": "int", "value": str(a[2])}))
+                # ud 同样为了统一度量衡而进行了改动
+                properties.append(ET.Element("property", {"name": "boundary_bottom", "type": "int", "value": str(640-a[1])}))
+                properties.append(ET.Element("property", {"name": "boundary_top", "type": "int", "value": str(640-a[2])}))
                 properties.append(ET.Element("property", {"name": "change_y", "type": "int", "value": str(a[3])}))
             obj.append(properties)
             objectgroup.append(obj)
@@ -225,6 +224,12 @@ class App:
 
         self.main3()
 
+        self.pos_xy_showVar = tk.StringVar()
+        self.pos_xy_showVar.set("1145, 1411")
+        self.pos_xy_show = tk.Label(self.main_window, textvariable=self.pos_xy_showVar,
+                                    background="skyblue")
+        self.pos_xy_show.place(x=200, y=0)
+
         self.main_window.update()
         self.main_window.mainloop()
 
@@ -252,10 +257,7 @@ class App:
         self.k0_rmEty.place_forget()
 
         # 再请客
-        if mode_num == 0:
-            print("reset_k5_kind_part收到了参数0")
-            return None
-        elif mode_num == 1:
+        if mode_num == 1:
             self.k0_tmLbl.place(relx=0, rely=1 / 5, relwidth=1, relheight=1 / 10)
             self.k0_tmEty.place(relx=0, rely=3 / 10, relwidth=1, relheight=1 / 20)
             self.k0_bmLbl.place(relx=0, rely=7 / 20, relwidth=1, relheight=1 / 20)
@@ -496,6 +498,10 @@ class App:
     # noinspection PyAttributeOutsideInit
     def main3(self):
         self.map_part = tk.Canvas(self.work_part, scrollregion=(0, 0, 1500, 1000), bg="skyblue")
+        self.map_part.bind("<Button-1>", self.click_to_choose_xy)
+        self.map_part.bind("<Motion>", self.motion)
+
+
         self.vbar_mp_R = tk.Scrollbar(self.map_part, orient=tk.VERTICAL)  # 竖直滚动条:Right
         self.vbar_mp_B = tk.Scrollbar(self.map_part, orient=tk.HORIZONTAL)  # 水平滚动条:Bottom
 
@@ -565,6 +571,58 @@ class App:
             print("再常见不过的ValueError")
         self.draw()
 
+    # 处理鼠标点击work_part选取坐标的情况
+    def click_to_choose_xy(self, event):
+        global kind_selection
+        # 以下代码来自https://blog.csdn.net/qq_41556318/article/details/85272026
+        canvas = event.widget
+        x = canvas.canvasx(event.x)
+        y = canvas.canvasy(event.y)
+        # 以上代码来自https://blog.csdn.net/qq_41556318/article/details/85272026
+        if kind_selection == 0:
+            self.k0_x_getVar.set(str(int(x/50*32)))
+            self.k0_y_getVar.set(str(int(y/50*32)))
+        elif kind_selection == 1:
+            self.k1_x_var.set(str(
+                int(x/1500*30)
+            ))
+            self.k1_y_var.set(str(
+                int(y/1000*20)
+            ))
+
+        elif kind_selection == 2:
+            self.k2_x_var.set(str(
+                int(x / 1500 * 30)
+            ))
+            self.k2_y_var.set(str(
+                int(y / 1000 * 20)
+            ))
+        elif kind_selection == 3:
+            self.k3_x_var.set(str(
+                int(x / 1500 * 30)
+            ))
+            self.k3_y_var.set(str(
+                int(y / 1000 * 20)
+            ))
+        elif kind_selection == 4:
+            self.k4_x_var.set(str(
+                int(x / 1500 * 30)
+            ))
+            self.k4_y_var.set(str(
+                int(y / 1000 * 20)
+            ))
+
+    # 处理鼠标移动的情况，并实时显示鼠标坐标
+    def motion(self, event):
+        # 以下代码来自https://blog.csdn.net/qq_41556318/article/details/85272026
+        canvas = event.widget
+        x = int(canvas.canvasx(event.x))
+        x = int(x/50*32)
+        y = int(canvas.canvasy(event.y))
+        y = int(y/50*32)
+        # 以上代码来自https://blog.csdn.net/qq_41556318/article/details/85272026
+        self.pos_xy_showVar.set(str(x) + ", " + str(y))
+
     # 主画板显示
     def draw(self):
         self.map_part.delete("all")
@@ -583,7 +641,7 @@ class App:
             im[img_n] = ImageTk.PhotoImage(img[img_n])
             self.map_part.create_image(i[4] / 960 * 1500 + 25, i[5] / 640 * 1000 + 25,
                                        image=im[img_n])
-            # 标上方便删除的ID
+            # 标上方便（删除）的ID
             self.map_part.create_text(i[4] / 960 * 1500 + 25, i[5] / 640 * 1000 + 25,
                                       text="ID:"+str(id)
                                       )
@@ -605,14 +663,14 @@ class App:
                 # 绘制标明位置的线段
                 if i[3] > 0:
                     self.map_part.create_line(i[4] / 960 * 1500 + 25, i[5] / 640 * 1000 + 25,
-                                              i[4] / 960 * 1500 + 25, (640 - i[2]) / 640 * 1000 + 25, fill="red")
+                                              i[4] / 960 * 1500 + 25, i[2] / 640 * 1000 + 25, fill="red")
                     self.map_part.create_line(i[4] / 960 * 1500 + 25, i[5] / 640 * 1000 + 25,
-                                              i[4] / 960 * 1500 + 25, (640 - i[1]) / 640 * 1000 + 25, fill="blue")
+                                              i[4] / 960 * 1500 + 25, i[1] / 640 * 1000 + 25, fill="blue")
                 else:
                     self.map_part.create_line(i[4] / 960 * 1500 + 25, i[5] / 640 * 1000 + 25,
-                                              i[4] / 960 * 1500 + 25, (640 - i[2]) / 640 * 1000 + 25, fill="blue")
+                                              i[4] / 960 * 1500 + 25, i[2] / 640 * 1000 + 25, fill="blue")
                     self.map_part.create_line(i[4] / 960 * 1500 + 25, i[5] / 640 * 1000 + 25,
-                                              i[4] / 960 * 1500 + 25, (640 - i[1]) / 640 * 1000 + 25, fill="red")
+                                              i[4] / 960 * 1500 + 25, i[1] / 640 * 1000 + 25, fill="red")
             img_n += 1
             id += 1
         del id
