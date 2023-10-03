@@ -27,8 +27,19 @@ original_imgs = ["./imgs/编程猫.png", "./imgs/会移动的砖块.png", "./img
                  "./imgs/元宝3.png", "./imgs/brick2.png", "./imgs/鼓.png", "./imgs/墙.png", "./imgs/兔年编程猫-迎财神.png",
                  "./imgs/邪恶的敌人1.png", "./imgs/游戏通关1.png", "./imgs/元宝.png", "./imgs/brick3.png"]
 
-# canvas所需的图片对象必须是在一个全局变量里，且（起码在图片显示时）始终不发生改变（P事真tnnd多）
-# 而为其空出600个变量是根本不可能的，所以只能出此下策
+"""
+canvas所需的图片对象必须是在一个全局变量里，且（起码在图片显示时）始终不发生改变（P事真tnnd多）
+而为其空出600个变量是根本不可能的，所以只能出此下策
+--------------
+之前的方案有个缺点：每调用一次draw()，它就会新占用以下三个列表的后几个位置，如果一直调用，会导致这三个列表的位置被很快用完。
+这个问题已得到解决(2023.10.03,National day in Wuwei)。理由是：以下这些变量只在类App()的方法draw()中被引用。显示功能也只在那里完成。
+那么就可以在每一次调用draw()时，先初始化它们，这样就用不完了。
+600从<累计在画板上显示的元素最大个数>变成了<同时在电脑上显示的元素最大个数>。
+--------------
+然而当我尝试着删除draw()方法中global全局声明对img,img_n以及im的声明以后，我意外发现：运行并点击加载按钮加载文件以后，素材只显示了一瞬间便消失了
+经过仔细思忖，我认为是因为：draw()在其生命周期结束后会删除作为它的局部变量的img,img_n以及im，这导致图片也被删了。
+所以它们必须作为全局变量。global不能删。既然如此，干脆把以下三行代码加回来，作为全局变量，有一个全局声明才是好习惯。
+"""
 img = [None for _ in range(300)]
 img_n = 0
 im = [None for _ in range(300)]
@@ -71,13 +82,56 @@ class Main_data_processor:
         self.bricks_data = [0 for _ in range(600)]
         self.walls_data = [0 for _ in range(600)]
 
-        self.load()
+        self.load_for_init()
+
+    def load_for_init(self):
+        self.tree = ET.parse("./prototype.xml").getroot()
+        for layer in self.tree.findall("layer"):
+            if layer.get("name") == "障碍物":
+                self.killers_data = eval("[" + layer.findtext("data") + "]")
+            elif layer.get("name") == "玩家":
+                self.player_data = eval("[" + layer.findtext("data") + "]")
+            elif layer.get("name") == "砖块":
+                self.bricks_data = eval("[" + layer.findtext("data") + "]")
+            else:
+                self.walls_data = eval("[" + layer.findtext("data") + "]")
+        # moving_bricks:
+        self.moving_bricks_data = []
+        objects = self.tree.findall("objectgroup/object")
+        for object in objects:
+            c = [None for _ in range(7)]
+            properties = object.find("properties").findall("property")
+            if object.find("properties/property", {"name": ""}) is not None and \
+                    object.find("properties/property", {"name": ""}).get("name") == "boundary_left":
+                c[0] = 1
+                for property_ in properties:
+                    if property_.get("name") == "boundary_left":
+                        c[1] = int(property_.get("value"))
+                    elif property_.get("name") == "boundary_right":
+                        c[2] = int(property_.get("value"))
+                    else:
+                        c[3] = int(property_.get("value"))
+            else:
+                c[0] = 0
+                for property_ in properties:
+                    if property_.get("name") == "boundary_bottom":  # 为统一度量衡
+                        c[1] = 640 - int(property_.get("value"))
+                    elif property_.get("name") == "boundary_top":
+                        c[2] = 640 - int(property_.get("value"))
+                    else:
+                        c[3] = int(property_.get("value"))
+
+            c[4] = int(float(object.get("x")))/2
+            c[5] = int(float(object.get("y")))/2
+            c[6] = int(object.get("gid"))
+            self.moving_bricks_data.append(c)
+        del objects
 
     def load(self):
         try:
             self.tree = ET.parse(filedialog.askopenfilename()).getroot()
         except Exception as E:
-            self.tree = ET.parse("./prototype.xml").getroot()
+            return None
         for layer in self.tree.findall("layer"):
             if layer.get("name") == "障碍物":
                 self.killers_data = eval("[" + layer.findtext("data") + "]")
@@ -560,7 +614,7 @@ class App:
         try:
             self.write_in_a_block()
         except ValueError:
-            print("再常见不过的ValueError")
+            print("再常见不过的ValueError（这通常是因为用户的某一个对话框没有填）")
         self.draw()
 
     # 处理删除按钮按下的情况
@@ -568,7 +622,7 @@ class App:
         try:
             self.delete_a_block()
         except ValueError:
-            print("再常见不过的ValueError")
+            print("再常见不过的ValueError（这通常是因为用户的某一个对话框没有填）")
         self.draw()
 
     # 处理鼠标点击work_part选取坐标，以及标记选区（选位）
@@ -629,9 +683,13 @@ class App:
 
     # 主画板显示
     def draw(self):
+        global original_imgs, img, im, img_n
+        img = [None for _ in range(300)]
+        img_n = 0
+        im = [None for _ in range(300)]
+
         self.map_part.delete("all")
         self.map_part.config(bg="Skyblue")
-        global original_imgs, img, im, img_n
         for i in range(30):
             self.map_part.create_line(i * 50, 0, i * 50, 1000)
         for i in range(20):
